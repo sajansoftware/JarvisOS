@@ -4,6 +4,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from backend.core.life_dashboard import get_dashboard_data
 from backend.core.tts import synthesize_speech
 from backend.plugins.system_control import SystemControlPlugin
 
@@ -38,3 +39,15 @@ async def system_stats():
     except Exception as e:
         logger.error("Stats error: %s", e)
         return JSONResponse({"error": "Failed to get stats"}, status_code=500)
+
+
+@router.get("/api/life-dashboard")
+async def life_dashboard():
+    try:
+        data = get_dashboard_data()
+        return data
+    except Exception as e:
+        logger.error("Life dashboard error: %s", e)
+        return JSONResponse(
+            {"error": "Failed to load dashboard data"}, status_code=500
+        )

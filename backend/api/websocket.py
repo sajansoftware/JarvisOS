@@ -6,37 +6,16 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.core.ai_engine import jarvis
 from backend.core.tts import synthesize_speech
-from backend.plugins.system_control import SystemControlPlugin
 
 router = APIRouter()
 logger = logging.getLogger("jarvis.ws")
 
 
-async def push_stats(websocket: WebSocket, interval: float = 2.0):
-    """Background task: push system stats to the client periodically."""
-    plugin = SystemControlPlugin()
-    while True:
-        try:
-            stats_json = plugin._get_stats()
-            await websocket.send_json(
-                {"type": "stats", "data": json.loads(stats_json)}
-            )
-        except (WebSocketDisconnect, RuntimeError):
-            break
-        except Exception as e:
-            logger.warning("Stats push error: %s", e)
-        await asyncio.sleep(interval)
-
-
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    stats_task = None
 
     try:
-        # Auto-subscribe to stats on connect
-        stats_task = asyncio.create_task(push_stats(websocket))
-
         # Send welcome message
         await websocket.send_json(
             {
@@ -121,13 +100,6 @@ async def websocket_endpoint(websocket: WebSocket):
         pass
     except Exception as e:
         logger.error("WebSocket error: %s", e)
-    finally:
-        if stats_task:
-            stats_task.cancel()
-            try:
-                await stats_task
-            except asyncio.CancelledError:
-                pass
 
 
 def _sync_chat(message: str) -> str:

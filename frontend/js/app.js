@@ -66,20 +66,18 @@
     function handleMessage(data) {
         switch (data.type) {
             case 'chat':
-                Chat.setTyping(false);
-                Chat.addMessage(data.role || 'assistant', data.content);
+                // Show Jarvis's response in the response display
+                Visualizer.setState('idle');
+                if (data.role === 'assistant' && data.content) {
+                    Voice.showResponse(data.content);
+                }
                 Dashboard.addLogEntry('Response received');
                 break;
 
             case 'typing':
-                Chat.setTyping(data.active);
                 if (data.active) {
                     Visualizer.setState('processing');
                 }
-                break;
-
-            case 'stats':
-                Dashboard.updateStats(data.data);
                 break;
 
             case 'tts':
@@ -113,7 +111,7 @@
     function init() {
         Dashboard.init();
         Visualizer.init();
-        Chat.init();
+        LifeDashboard.init();
         Voice.init();
         connect();
         console.log('[JARVIS] All systems initialized');

@@ -1,5 +1,5 @@
 // ========================================
-// J.A.R.V.I.S. Voice — Voice-First Interface
+// J.A.R.V.I.S. Voice — Voice-Only Interface
 // ========================================
 
 const Voice = {
@@ -14,6 +14,7 @@ const Voice = {
     spaceHeld: false,
     audioCtx: null,
     micStream: null,
+    transcriptFadeTimer: null,
 
     init() {
         this.micBtn = document.getElementById('mic-btn');
@@ -61,10 +62,13 @@ const Voice = {
             // Play deactivation tone
             this.playTone('deactivate');
 
-            const input = document.getElementById('chat-input');
-            if (input) {
-                input.value = transcript;
-                Chat.sendMessage();
+            // Show transcript in the display
+            this.showTranscript(transcript);
+
+            // Send directly via WebSocket
+            if (window.jarvisWs && window.jarvisWs.readyState === WebSocket.OPEN) {
+                window.jarvisWs.send(JSON.stringify({ type: 'chat', message: transcript }));
+                Dashboard.addLogEntry('Command sent');
             }
 
             Dashboard.addLogEntry(`Voice input (${Math.round(confidence * 100)}% conf)`);
@@ -90,11 +94,24 @@ const Voice = {
             }
         };
 
-        // Mic button — click to toggle
-        this.micBtn.addEventListener('click', () => {
+        // Mic button — hold to talk (PTT) or toggle (continuous)
+        this.micBtn.addEventListener('mousedown', () => {
             if (this.mode === 'push-to-talk') {
-                this.toggleListening();
-            } else {
+                this.startListening();
+            }
+        });
+        this.micBtn.addEventListener('mouseup', () => {
+            if (this.mode === 'push-to-talk' && this.isListening) {
+                this.stopListening();
+            }
+        });
+        this.micBtn.addEventListener('mouseleave', () => {
+            if (this.mode === 'push-to-talk' && this.isListening) {
+                this.stopListening();
+            }
+        });
+        this.micBtn.addEventListener('click', () => {
+            if (this.mode === 'continuous') {
                 this.toggleContinuousMode();
             }
         });
@@ -132,7 +149,7 @@ const Voice = {
         // Push-to-talk: Hold Space
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && this.mode === 'push-to-talk' && !this.spaceHeld) {
-                // Don't capture if user is typing in the input
+                // Don't capture if user is typing in an input
                 const active = document.activeElement;
                 if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
 
@@ -153,6 +170,34 @@ const Voice = {
         });
 
         this.updateModeIndicator();
+    },
+
+    showTranscript(text) {
+        const transcriptEl = document.getElementById('transcript-display');
+        const textEl = document.getElementById('transcript-text');
+        if (!transcriptEl || !textEl) return;
+
+        textEl.textContent = text;
+        transcriptEl.classList.add('visible');
+
+        // Clear previous fade timer
+        if (this.transcriptFadeTimer) {
+            clearTimeout(this.transcriptFadeTimer);
+        }
+
+        // Fade after 5 seconds
+        this.transcriptFadeTimer = setTimeout(() => {
+            transcriptEl.classList.remove('visible');
+        }, 5000);
+    },
+
+    showResponse(text) {
+        const responseEl = document.getElementById('response-display');
+        const textEl = document.getElementById('response-text');
+        if (!responseEl || !textEl) return;
+
+        textEl.textContent = text;
+        responseEl.classList.add('visible');
     },
 
     async startListening() {
@@ -183,16 +228,6 @@ const Voice = {
             // Already stopped
         }
         this.setListening(false);
-    },
-
-    toggleListening() {
-        if (this.isListening) {
-            this.stopListening();
-            this.playTone('deactivate');
-            Visualizer.setState('idle');
-        } else {
-            this.startListening();
-        }
     },
 
     startContinuousListening() {
@@ -238,7 +273,10 @@ const Voice = {
     // --- TTS Playback ---
 
     playTTS(ttsData) {
-        if (!ttsData || this.isMuted) return;
+        if (!ttsData || this.isMuted) {
+            // Even when muted, show the response text
+            return;
+        }
 
         if (ttsData.use_browser_tts) {
             this.browserTTS(ttsData.text);
@@ -362,6 +400,14 @@ const Voice = {
         }
     }
 };
+
+// sendQuickCommand — sends via WebSocket directly (no Chat dependency)
+function sendQuickCommand(text) {
+    if (window.jarvisWs && window.jarvisWs.readyState === WebSocket.OPEN) {
+        window.jarvisWs.send(JSON.stringify({ type: 'chat', message: text }));
+        Dashboard.addLogEntry('Quick action: ' + text);
+    }
+}
 
 // Voices load asynchronously
 if (window.speechSynthesis) {

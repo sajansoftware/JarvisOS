@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.api import routes, websocket
 from backend.core.memory import init_db
 from backend.plugins.base import registry
+from backend.plugins.life_dashboard import LifeDashboardPlugin
 from backend.plugins.system_control import SystemControlPlugin
 
 
@@ -16,6 +17,7 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
     registry.register(SystemControlPlugin())
+    registry.register(LifeDashboardPlugin())
     print("\n  J.A.R.V.I.S. OS is online.\n")
     yield
     # Shutdown
