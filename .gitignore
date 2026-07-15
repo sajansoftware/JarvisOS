@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.db
+.venv/
+venv/
+node_modules/
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+builder-prompt.md
+context.md
+plan.md
+projects/
