@@ -112,6 +112,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         {"type": "command_result", "action": action, "result": result}
                     )
 
+            elif msg_type == "voice_state":
+                # Log voice state changes for debugging / future features
+                voice_state = data.get("state", "unknown")
+                logger.debug("Voice state: %s", voice_state)
+
     except WebSocketDisconnect:
         pass
     except Exception as e:

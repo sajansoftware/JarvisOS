@@ -48,7 +48,6 @@
             Dashboard.addLogEntry('Connection lost');
             console.log('[JARVIS] WebSocket disconnected');
 
-            // Exponential backoff with cap
             if (reconnectAttempts < MAX_RECONNECT) {
                 const delay = Math.min(BASE_DELAY * Math.pow(2, reconnectAttempts), MAX_DELAY);
                 reconnectAttempts++;
@@ -74,6 +73,9 @@
 
             case 'typing':
                 Chat.setTyping(data.active);
+                if (data.active) {
+                    Visualizer.setState('processing');
+                }
                 break;
 
             case 'stats':
@@ -110,6 +112,7 @@
     // Initialize everything
     function init() {
         Dashboard.init();
+        Visualizer.init();
         Chat.init();
         Voice.init();
         connect();
